@@ -11,21 +11,35 @@ Orchestrate multiple AI consultants for consensus-driven reviews and decisions.
 
 ## Installation
 
-### Option A: Copy to Personal Config
+### Step 1: Download
 
+**Option A: Download Release (Recommended)**
 ```bash
-# Extract and copy
+# Download latest release
+curl -LO https://github.com/rube-de/claude-council/releases/latest/download/council-plugin.zip
 unzip council-plugin.zip
-cp -r council-plugin/skills/* ~/.claude/skills/
-cp -r council-plugin/agents/* ~/.claude/agents/
 ```
 
-### Option B: Project-Level
+Or download directly from [Releases](https://github.com/rube-de/claude-council/releases).
 
+**Option B: Clone Repository**
 ```bash
-# Copy to project
-cp -r council-plugin/skills/* .claude/skills/
-cp -r council-plugin/agents/* .claude/agents/
+git clone https://github.com/rube-de/claude-council.git
+cd claude-council
+```
+
+### Step 2: Install
+
+**Personal Config (all projects)**
+```bash
+cp -r skills/* ~/.claude/skills/
+cp -r agents/* ~/.claude/agents/
+```
+
+**Project-Level (current project only)**
+```bash
+cp -r skills/* .claude/skills/
+cp -r agents/* .claude/agents/
 ```
 
 ## Prerequisites
