@@ -188,9 +188,13 @@ fi
    - Present suggestions to user, let them confirm/override
    - If user selects "general" or skips: run broad pass with auto-escalation
 
-7. **Launch All Consultants in Parallel (120s timeout each)**
+7. **Launch Both Layers in Parallel**
 
-   For PR review, expertise weights:
+   Launch external consultants AND Claude subagents simultaneously:
+
+   **Layer 1: External Consultants (120s timeout each)**
+
+   All receive the SAME prompt (same concern lens, same context):
    | Consultant | PR Review Weight |
    |------------|------------------|
    | Codex | 0.90 |
@@ -198,7 +202,25 @@ fi
    | Qwen | 0.80 |
    | GLM | 0.75 |
 
-   All consultants receive the SAME prompt (same concern lens, same context).
+   **Layer 2: Claude Subagents (parallel, 120s timeout each)**
+
+   Each runs a DIFFERENT concern with native tool access:
+   ```
+   Task(claude-security, model=opus):    "Review for security issues. Use Read/Grep to trace input paths."
+   Task(claude-bugs, model=opus):        "Review for bugs. Use Read/Grep to follow call chains."
+   Task(claude-compliance, model=haiku): "Check CLAUDE.md compliance. Read CLAUDE.md files directly."
+   Task(claude-history, model=haiku):    "Check git history for regressions. Use Bash for git blame/log."
+   Task(claude-quality, model=haiku):    "Check code quality. Use Grep to compare against codebase patterns."
+   ```
+
+   If `--blind` flag is set, invoke Claude subagents via CLI instead:
+   ```bash
+   claude -p "Review for security issues: [diff content]"
+   claude -p "Review for bugs: [diff content]"
+   # etc. — no tool access, same constraints as external consultants
+   ```
+
+   All 9 agents (4 external + 5 Claude) run simultaneously.
    Each MUST return findings with mandatory `location` field (`file:line`).
 
 8. **Auto-Escalation (Broad Pass Only)**
@@ -213,36 +235,57 @@ fi
      → Skip escalation, proceed to scoring
    ```
 
-9. **Confidence Scoring (Sonnet Agent)**
+9. **Collect and Merge Findings from Both Layers**
 
-   After all consultant findings are collected:
+   After all agents return (external consultants + Claude subagents):
    ```
-   1. Deduplicate findings referring to the same issue
-   2. Launch Sonnet scoring agent with full context + all findings
-   3. Scorer assigns 0-100 confidence to each finding
-   4. Filter: only findings >= 80 appear in final report
+   1. Collect findings from Layer 1 (external): model-diversity consensus
+   2. Collect findings from Layer 2 (Claude subagents): concern-specialized depth
+   3. Merge into unified finding set
+   4. Note cross-layer corroboration:
+      - Finding flagged by BOTH an external consultant AND a Claude subagent
+        → Strong signal (independent methods agree)
+      - Finding from Claude subagent with tool evidence (traced call chain, read blame)
+        → Strong signal even without external consensus
    ```
 
-   See SKILL.md "Confidence Scoring Agent" for scorer prompt template and rubric.
+10. **Confidence Scoring (Sonnet Agent)**
 
-10. **Apply Weighted Synthesis**
+    After all findings are merged:
     ```
-    Critical issues (score >= 80) from ANY consultant → Block merge
-    High issues (score >= 80) from 2+ consultants → Should fix
-    Medium issues (score >= 80) from 3+ consultants → Consider
+    1. Deduplicate findings referring to the same issue (across both layers)
+    2. Launch review-scorer (Sonnet) with full context + all findings
+    3. Scorer evaluates each finding 0-100, considering:
+       - External consultant consensus count
+       - Claude subagent tool-traced evidence
+       - Cross-layer corroboration
+    4. Filter: only findings >= 80 appear in final report
+    ```
+
+    See SKILL.md "Confidence Scoring Agent" for scorer prompt template and rubric.
+
+11. **Apply Weighted Synthesis**
+    ```
+    Critical issues (score >= 80) from ANY source → Block merge
+    High issues (score >= 80) from 2+ sources → Should fix
+    Medium issues (score >= 80) from 3+ sources → Consider
+    Cross-layer corroboration → Boost priority
     All other scored findings → Optional / informational
     ```
 
-11. **Present Review Summary**
+12. **Present Review Summary**
     ```markdown
-    ## PR Review: [PR Title]
+    ## Council Code Review: [PR Title]
 
-    ### Consultants Responding: 4/4 ✓
-    ### Concern Mode: [security | architecture | bugs | quality | broad]
+    ### Reviewers
+    - External: Gemini ✓ | Codex ✓ | Qwen ✓ | GLM ✗ (timeout)
+    - Claude: security ✓ | bugs ✓ | compliance ✓ | history ✓ | quality ✓
+    - Scorer: review-scorer ✓
+    ### Mode: [concern | broad] | Blind: [no | yes]
     ### Escalation: [None | Escalated to security round]
 
     ### 🚨 Block Merge (Critical, score >= 80)
-    - [finding] at `file:line` (score: 92, flagged by: Gemini, Codex)
+    - [finding] at `file:line` (score: 92, flagged by: Gemini, Codex, claude-security)
 
     ### ⚠️ Should Fix (High, score >= 80, 2+ agree)
     - [finding] at `file:line` (score: 85, flagged by: Qwen, GLM, Codex)

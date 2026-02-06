@@ -62,12 +62,73 @@ t=15s: Launch GLM
 
 ## Available Consultants
 
+### External Consultants (Model Diversity)
+
+Invoked via CLI. Each brings a different AI model's perspective. All receive the **same prompt** for consensus.
+
 | Agent | CLI | Strength | Expertise Weight |
 |-------|-----|----------|------------------|
 | `gemini-consultant` | `gemini` | Architecture, security | Security: 0.9, Architecture: 0.85 |
 | `codex-consultant` | `codex` | PR review, bugs | Debugging: 0.9, Security: 0.8 |
 | `qwen-consultant` | `qwen` | Quality, brainstorming | Quality: 0.9, Refactoring: 0.85 |
 | `glm-consultant` | `opencode -m glm-4.7` | Alternative views, multilingual | Algorithms: 0.85, Chinese: 0.95 |
+
+### Claude Subagents (Concern Depth — Review Workflows Only)
+
+Invoked via Task tool. Each has a **different concern** and **native codebase access** (Read, Grep, Glob, Bash).
+
+| Agent | Model | Concern | Unique Capability |
+|-------|-------|---------|-------------------|
+| `claude-security` | opus | Auth, injection, secrets, access control | Traces input paths through imports, verifies sanitization |
+| `claude-bugs` | opus | Logic errors, edge cases, race conditions | Follows call chains, checks type definitions, verifies nullability |
+| `claude-compliance` | haiku | CLAUDE.md rules, code comment directives | Reads CLAUDE.md files directly, compares rules to changes |
+| `claude-history` | haiku | Regressions, recurring patterns, author context | Runs git blame, reads commit history, detects reverted fixes |
+| `claude-quality` | haiku | Readability, complexity, duplication, consistency | Greps codebase for pattern comparison, finds duplicates |
+
+### Dual-Layer Architecture (Review Workflows)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     /council review                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Layer 1: External Consultants (PARALLEL)                       │
+│  ┌──────────┬──────────┬──────────┬──────────┐                  │
+│  │ Gemini   │ Codex    │ Qwen     │ GLM      │                  │
+│  │ (same    │ (same    │ (same    │ (same    │  ← Same prompt   │
+│  │  prompt) │  prompt) │  prompt) │  prompt) │  ← Model diversity│
+│  └──────────┴──────────┴──────────┴──────────┘  ← Consensus     │
+│                                                                 │
+│  Layer 2: Claude Subagents (PARALLEL)                           │
+│  ┌──────────┬──────────┬──────────┬──────────┬──────────┐       │
+│  │ Security │ Bugs     │Compliance│ History  │ Quality  │       │
+│  │ (opus)   │ (opus)   │ (haiku)  │ (haiku)  │ (haiku)  │       │
+│  │ Read/Grep│ Read/Grep│ Read/Grep│ Bash/Git │ Read/Grep│       │
+│  └──────────┴──────────┴──────────┴──────────┴──────────┘       │
+│   ← Different concerns │ ← Native tool access │ ← Depth         │
+│                                                                 │
+│  Layer 3: Scoring                                               │
+│  ┌─────────────────────────────────────────────────────┐        │
+│  │ review-scorer (sonnet)                              │        │
+│  │ Scores ALL findings from both layers 0-100          │        │
+│  │ Filters at threshold (>= 80)                        │        │
+│  └─────────────────────────────────────────────────────┘        │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+Both layers launch **simultaneously** — external consultants and Claude subagents run in parallel.
+
+### Blind Mode (`--blind`)
+
+By default, Claude subagents use native tool access. With the `--blind` flag, they run via `claude -p` CLI instead — losing tool access but reviewing under the same constraints as external consultants.
+
+```
+/council review --blind    → Claude subagents invoked via CLI, no tool access
+/council review            → Claude subagents invoked via Task, full tool access (default)
+```
+
+Use `--blind` when you want to compare Claude's blind opinion against its tool-assisted findings, or when you want all reviewers on equal footing.
 
 ## Timeout and Failure Handling
 

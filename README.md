@@ -4,10 +4,13 @@ Orchestrate multiple AI consultants for consensus-driven reviews and decisions.
 
 ## Features
 
-- **4 AI Consultants**: Gemini, Codex, Qwen, GLM-4.7
+- **4 External AI Consultants**: Gemini, Codex, Qwen, GLM-4.7 (model diversity)
+- **5 Claude Subagents**: Security, Bugs, Compliance, History, Quality (concern depth with native tool access)
+- **Dual-Layer Review**: External consensus + Claude depth, all in parallel
 - **Multiple Workflows**: Parallel, Review, Hierarchical, Adversarial, Consensus
 - **Concern-Specific Review**: Security, Architecture, Bugs, Quality focus modes
 - **Confidence Scoring**: Sonnet scoring agent filters false positives (0-100 scale)
+- **Blind Mode**: `--blind` flag strips Claude subagent tool access for equal-footing comparison
 - **Weighted Synthesis**: Expertise-based opinion weighting
 - **False Positive Filtering**: Explicit taxonomy prevents noise at the source
 - **Git History Context**: Blame + commit history in review workflows
@@ -77,17 +80,18 @@ The following CLIs must be installed and authenticated:
 ### How Review Works
 
 ```
-/council review [concern?]
+/council review [concern?] [--blind?]
      │
-     ├─ Concern given? → All 4 consultants focus on that concern
+     ├─ Layer 1: External Consultants (4x, parallel, same prompt)
+     │   Gemini, Codex, Qwen, GLM → model diversity consensus
      │
-     └─ No concern? → Auto-detect from diff → User confirms
-                       → Broad pass → Auto-escalate if high severity
-                                    ↓
-                          Sonnet scoring agent (0-100)
-                          Filter at threshold (>= 80)
-                                    ↓
-                             Final report
+     ├─ Layer 2: Claude Subagents (5x, parallel, different concerns)
+     │   Security, Bugs, Compliance, History, Quality → depth + tool access
+     │   (or --blind: via CLI, no tool access)
+     │
+     └─ Layer 3: Scoring
+         review-scorer (Sonnet) → scores all findings 0-100
+         Filter at threshold (>= 80) → final report
 ```
 
 ### Individual Consultants
@@ -112,11 +116,16 @@ council-plugin/
 │       ├── WORKFLOWS.md        # Detailed workflow procedures
 │       └── QUICK-REFERENCE.md  # Lookup tables, CLI commands, templates
 ├── agents/
-│   ├── gemini-consultant.md    # Gemini CLI (architecture, security)
-│   ├── codex-consultant.md     # Codex CLI (PR review, debugging)
-│   ├── qwen-consultant.md      # Qwen CLI (quality, brainstorming)
-│   ├── glm-consultant.md       # OpenCode/GLM-4.7 (multilingual, algorithms)
-│   └── review-scorer.md        # Internal Sonnet agent (confidence scoring)
+│   ├── gemini-consultant.md    # External: Gemini CLI (architecture, security)
+│   ├── codex-consultant.md     # External: Codex CLI (PR review, debugging)
+│   ├── qwen-consultant.md      # External: Qwen CLI (quality, brainstorming)
+│   ├── glm-consultant.md       # External: OpenCode/GLM-4.7 (multilingual, algorithms)
+│   ├── claude-security.md      # Internal: Security review (opus, tool access)
+│   ├── claude-bugs.md          # Internal: Bug detection (opus, tool access)
+│   ├── claude-compliance.md    # Internal: CLAUDE.md compliance (haiku, tool access)
+│   ├── claude-history.md       # Internal: Git history analysis (haiku, tool access)
+│   ├── claude-quality.md       # Internal: Code quality (haiku, tool access)
+│   └── review-scorer.md        # Internal: Confidence scoring (sonnet)
 └── README.md
 ```
 

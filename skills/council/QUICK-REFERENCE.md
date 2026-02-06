@@ -20,9 +20,29 @@
 ### Review Mode Behavior
 
 ```
-/council review              → Auto-detect concerns, user confirms, broad pass + escalation
-/council review security     → All 4 consultants focus on security only
+/council review              → Auto-detect concerns, broad pass + escalation, both layers
+/council review security     → All 4 external focus on security + all 5 Claude subagents
 /council review bugs quality → Run bugs round, then quality round, merge results
+/council review --blind      → Claude subagents via CLI (no tool access), equal footing
+```
+
+### Review Architecture (Dual-Layer)
+
+```
+Layer 1: External Consultants          Layer 2: Claude Subagents
+(model diversity, same prompt)         (concern depth, tool access)
+┌────────┬────────┬────────┬────────┐  ┌──────────┬──────────┬──────────┐
+│ Gemini │ Codex  │ Qwen   │ GLM    │  │ Security │ Bugs     │Compliance│
+│  CLI   │  CLI   │  CLI   │  CLI   │  │ (opus)   │ (opus)   │ (haiku)  │
+└────────┴────────┴────────┴────────┘  ├──────────┼──────────┤
+         ↓ consensus                   │ History  │ Quality  │
+                                       │ (haiku)  │ (haiku)  │
+         ALL run in parallel           └──────────┴──────────┘
+                    ↓                          ↓ depth
+              ┌───────────┐
+              │  Scorer   │ ← merges + scores all findings
+              │ (sonnet)  │
+              └───────────┘
 ```
 
 ## Pre-Flight Check
