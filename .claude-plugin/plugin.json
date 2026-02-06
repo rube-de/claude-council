@@ -1,7 +1,7 @@
 {
   "name": "council",
-  "description": "AI Council - Orchestrate multiple AI consultants (Gemini, Codex, Qwen, GLM-4.7) for consensus-driven code reviews, plan validation, and architectural decisions",
-  "version": "1.0.0",
+  "description": "AI Council - Orchestrate multiple AI consultants (Gemini, Codex, Qwen, GLM-4.7, Kimi K2.5) for consensus-driven code reviews, plan validation, and architectural decisions",
+  "version": "1.1.0",
   "author": {
     "name": "claude-council"
   },
@@ -13,7 +13,8 @@
     "gemini",
     "codex",
     "qwen",
-    "glm"
+    "glm",
+    "kimi"
   ],
   "repository": {
     "type": "git",
