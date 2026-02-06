@@ -18,7 +18,7 @@ Before invoking any consultant, verify:
 command -v gemini >/dev/null 2>&1 || echo "WARN: gemini CLI not found"
 command -v codex >/dev/null 2>&1 || echo "WARN: codex CLI not found"
 command -v qwen >/dev/null 2>&1 || echo "WARN: qwen CLI not found"
-command -v opencode >/dev/null 2>&1 || echo "WARN: opencode CLI not found"
+command -v opencode >/dev/null 2>&1 || echo "WARN: opencode CLI not found (needed for GLM + Kimi)"
 ```
 
 If any CLI is missing, inform user and proceed with available consultants only.
@@ -31,7 +31,7 @@ External CLIs may hit rate limits. Handle gracefully:
 |----------|-----------|--------|
 | Rate limited | CLI returns 429 or "rate limit" error | Wait 30s, retry once |
 | Repeated limits | 2+ rate limits from same CLI | Skip that consultant, proceed with others |
-| All rate limited | All 4 CLIs rate limited | Abort with clear error, suggest waiting |
+| All rate limited | All CLIs rate limited | Abort with clear error, suggest waiting |
 
 ### Retry Strategy
 
@@ -52,12 +52,13 @@ retry_with_backoff() {
 
 ### Staggered Launch (if rate limits frequent)
 
-Instead of all 4 simultaneously, stagger by 5 seconds:
+Instead of all 5 simultaneously, stagger by 5 seconds:
 ```
 t=0s:  Launch Gemini
 t=5s:  Launch Codex
 t=10s: Launch Qwen
 t=15s: Launch GLM
+t=20s: Launch Kimi
 ```
 
 ## Available Consultants
@@ -71,7 +72,8 @@ Invoked via CLI. Each brings a different AI model's perspective. All receive the
 | `gemini-consultant` | `gemini` | Architecture, security | Security: 0.9, Architecture: 0.85 |
 | `codex-consultant` | `codex` | PR review, bugs | Debugging: 0.9, Security: 0.8 |
 | `qwen-consultant` | `qwen` | Quality, brainstorming | Quality: 0.9, Refactoring: 0.85 |
-| `glm-consultant` | `opencode -m glm-4.7` | Alternative views, multilingual | Algorithms: 0.85, Chinese: 0.95 |
+| `glm-consultant` | `opencode -m glm-4.7` | Alternative views, algorithms | Algorithms: 0.85, Architecture: 0.80 |
+| `kimi-consultant` | `opencode -m opencode/kimi-k2.5-free` | Code analysis, algorithms | Code Quality: 0.80, Algorithms: 0.80 |
 
 ### Claude Subagents (Concern Depth — Review Workflows Only)
 
@@ -93,11 +95,12 @@ Invoked via Task tool. Each has a **different concern** and **native codebase ac
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  Layer 1: External Consultants (PARALLEL)                       │
-│  ┌──────────┬──────────┬──────────┬──────────┐                  │
-│  │ Gemini   │ Codex    │ Qwen     │ GLM      │                  │
-│  │ (same    │ (same    │ (same    │ (same    │  ← Same prompt   │
-│  │  prompt) │  prompt) │  prompt) │  prompt) │  ← Model diversity│
-│  └──────────┴──────────┴──────────┴──────────┘  ← Consensus     │
+│  ┌──────────┬──────────┬──────────┬──────────┬──────────┐       │
+│  │ Gemini   │ Codex    │ Qwen     │ GLM      │ Kimi     │       │
+│  │ (same    │ (same    │ (same    │ (same    │ (same    │       │
+│  │  prompt) │  prompt) │  prompt) │  prompt) │  prompt) │       │
+│  └──────────┴──────────┴──────────┴──────────┴──────────┘       │
+│   ← Same prompt │ ← Model diversity │ ← Consensus               │
 │                                                                 │
 │  Layer 2: Claude Subagents (PARALLEL)                           │
 │  ┌──────────┬──────────┬──────────┬──────────┬──────────┐       │
@@ -117,7 +120,7 @@ Invoked via Task tool. Each has a **different concern** and **native codebase ac
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-Both layers launch **simultaneously** — external consultants and Claude subagents run in parallel.
+Both layers launch **simultaneously** — external consultants (5) and Claude subagents (5) run in parallel.
 
 ### Blind Mode (`--blind`)
 
@@ -140,11 +143,12 @@ Use `--blind` when you want to compare Claude's blind opinion against its tool-a
 
 | Available | Action |
 |-----------|--------|
-| 4/4 | Full synthesis |
-| 3/4 | Proceed with warning: "Note: [X] consultant unavailable" |
-| 2/4 | Proceed with strong warning: "Limited council - only 2 responses" |
-| 1/4 | Abort council, fall back to single consultant mode |
-| 0/4 | Abort with error: "Council unavailable - all consultants failed" |
+| 5/5 | Full synthesis |
+| 4/5 | Proceed with note: "[X] consultant unavailable" |
+| 3/5 | Proceed with warning: "Limited council - only 3 responses" |
+| 2/5 | Proceed with strong warning: "Limited council - only 2 responses" |
+| 1/5 | Abort council, fall back to single consultant mode |
+| 0/5 | Abort with error: "Council unavailable - all consultants failed" |
 
 ### Structured Response Format
 
@@ -220,7 +224,7 @@ Do NOT flag the following as issues:
 
 ## Concern-Specific Review Modes
 
-`/council review` supports focused concern modes. All 4 consultants review through the **same lens** for consensus on that concern.
+`/council review` supports focused concern modes. All 5 consultants review through the **same lens** for consensus on that concern.
 
 ### Available Concern Modes
 
@@ -252,13 +256,13 @@ When no concern mode is selected, `/council review` runs a **broad pass**:
 
 ```
 Phase 1: Broad Review
-  - All 4 consultants review for ALL concerns in a single pass
+  - All 5 consultants review for ALL concerns in a single pass
   - Each returns findings tagged by type (security, architecture, bug, quality)
 
 Phase 2: Auto-Escalation
   - If any finding has severity == "critical" or "high":
     → Automatically launch a focused concern-specific round for that type
-    → All 4 consultants re-review through that narrow lens only
+    → All 5 consultants re-review through that narrow lens only
   - If all findings are medium/low:
     → No escalation, proceed to scoring
 
@@ -285,8 +289,8 @@ After consultants return findings (in any `/council review` workflow), a **Sonne
    100: Confirmed real. Will happen frequently. Evidence is conclusive.
 
 5. Consensus count from consultants INFORMS the score:
-   - 4/4 flagged → scorer starts from a higher baseline
-   - 1/4 flagged → scorer applies more scrutiny
+   - 5/5 flagged → scorer starts from a higher baseline
+   - 1/5 flagged → scorer applies more scrutiny
    - But consensus does NOT override the scorer's independent judgment
 
 6. Filter: Only findings scoring >= 80 appear in the final report
@@ -348,7 +352,7 @@ Return JSON: [{finding_id, score, reasoning}]
    - Advocate: "Find every reason this SHOULD be approved"
    - Critic: "Find every reason this SHOULD NOT be approved"
 2. Pair consultants:
-   - Gemini + Qwen as Advocates
+   - Gemini + Qwen + Kimi as Advocates
    - Codex + GLM as Critics
 3. Present both perspectives
 4. User decides based on trade-offs
@@ -382,6 +386,7 @@ Example for security finding:
   Codex (security=0.8, confidence=0.9): HIGH
   Qwen (security=0.7, confidence=0.7): MEDIUM
   GLM (security=0.75, confidence=0.8): HIGH
+  Kimi (security=0.7, confidence=0.75): HIGH
 
   Weighted score → CRITICAL (Gemini's expertise dominates)
 ```
@@ -395,7 +400,8 @@ Example for security finding:
 - Gemini: ✓ Available
 - Codex: ✓ Available
 - Qwen: ✓ Available
-- GLM: ✗ Timeout (proceeded with 3/4)
+- GLM: ✗ Timeout (proceeded with 4/5)
+- Kimi: ✓ Available
 
 ### Consensus (All Available Agree)
 - [Weighted findings where all agree]
@@ -404,9 +410,9 @@ Example for security finding:
 - [Findings with strong weighted agreement]
 
 ### Divergent Views
-| Finding | Gemini | Codex | Qwen | GLM | Weighted |
-|---------|--------|-------|------|-----|----------|
-| [Issue] | [View] | [View] | [View] | N/A | [Score] |
+| Finding | Gemini | Codex | Qwen | GLM | Kimi | Weighted |
+|---------|--------|-------|------|-----|------|----------|
+| [Issue] | [View] | [View] | [View] | N/A | [View] | [Score] |
 
 ### Critical Issues (Any Consultant, severity=critical)
 - [Always include - err on caution]
@@ -416,9 +422,9 @@ Example for security finding:
 2. [Include dissenting rationale for user decision]
 
 ### Confidence Level
-- High (4/4 available, weighted agreement > 0.8): ✓
-- Medium (3/4 available OR agreement 0.6-0.8): ~
-- Low (2/4 available OR agreement < 0.6): User must decide
+- High (5/5 available, weighted agreement > 0.8): ✓
+- Medium (3-4/5 available OR agreement 0.6-0.8): ~
+- Low (2/5 available OR agreement < 0.6): User must decide
 
 ### Rate Limit Status
 - Retries: 0
@@ -437,7 +443,7 @@ Don't bias: "Don't you think X is better?"
 Disagreement often reveals important trade-offs.
 
 ### ❌ Skipping Synthesis
-Users want insights, not four reports.
+Users want insights, not five reports.
 
 ### ❌ Over-consulting
 Not every decision needs full council.

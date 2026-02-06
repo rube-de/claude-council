@@ -4,7 +4,7 @@ Orchestrate multiple AI consultants for consensus-driven reviews and decisions.
 
 ## Features
 
-- **4 External AI Consultants**: Gemini, Codex, Qwen, GLM-4.7 (model diversity)
+- **5 External AI Consultants**: Gemini, Codex, Qwen, GLM-4.7, Kimi K2.5 (model diversity)
 - **5 Claude Subagents**: Security, Bugs, Compliance, History, Quality (concern depth with native tool access)
 - **Dual-Layer Review**: External consensus + Claude depth, all in parallel
 - **Multiple Workflows**: Parallel, Review, Hierarchical, Adversarial, Consensus
@@ -58,7 +58,7 @@ The following CLIs must be installed and authenticated:
 | `gemini` | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | `gemini auth` |
 | `codex` | [Codex CLI](https://github.com/openai/codex) | OAuth |
 | `qwen` | [Qwen CLI](https://github.com/QwenLM/qwen-cli) | API key |
-| `opencode` | [OpenCode CLI](https://github.com/opencode-ai/opencode) | API key |
+| `opencode` | [OpenCode CLI](https://github.com/opencode-ai/opencode) | API key (GLM-4.7 + Kimi K2.5) |
 
 ## Usage
 
@@ -67,10 +67,10 @@ The following CLIs must be installed and authenticated:
 ```
 /council                        # General review
 /council review                 # Code review (auto-detect concerns + scoring)
-/council review security        # All 4 consultants focus on security
-/council review architecture    # All 4 consultants focus on architecture
-/council review bugs            # All 4 consultants focus on bugs
-/council review quality         # All 4 consultants focus on code quality
+/council review security        # All 5 consultants focus on security
+/council review architecture    # All 5 consultants focus on architecture
+/council review bugs            # All 5 consultants focus on bugs
+/council review quality         # All 5 consultants focus on code quality
 /council plan                   # Plan validation
 /council consensus              # Multi-round consensus
 /council adversarial            # Advocates vs Critics
@@ -82,8 +82,8 @@ The following CLIs must be installed and authenticated:
 ```
 /council review [concern?] [--blind?]
      │
-     ├─ Layer 1: External Consultants (4x, parallel, same prompt)
-     │   Gemini, Codex, Qwen, GLM → model diversity consensus
+     ├─ Layer 1: External Consultants (5x, parallel, same prompt)
+     │   Gemini, Codex, Qwen, GLM, Kimi → model diversity consensus
      │
      ├─ Layer 2: Claude Subagents (5x, parallel, different concerns)
      │   Security, Bugs, Compliance, History, Quality → depth + tool access
@@ -102,6 +102,7 @@ gemini-consultant
 codex-consultant
 qwen-consultant
 glm-consultant
+kimi-consultant
 ```
 
 ## Contents
@@ -119,7 +120,8 @@ council-plugin/
 │   ├── gemini-consultant.md    # External: Gemini CLI (architecture, security)
 │   ├── codex-consultant.md     # External: Codex CLI (PR review, debugging)
 │   ├── qwen-consultant.md      # External: Qwen CLI (quality, brainstorming)
-│   ├── glm-consultant.md       # External: OpenCode/GLM-4.7 (multilingual, algorithms)
+│   ├── glm-consultant.md       # External: OpenCode/GLM-4.7 (algorithms, architecture)
+│   ├── kimi-consultant.md      # External: OpenCode/Kimi K2.5 (code analysis, algorithms)
 │   ├── claude-security.md      # Internal: Security review (opus, tool access)
 │   ├── claude-bugs.md          # Internal: Bug detection (opus, tool access)
 │   ├── claude-compliance.md    # Internal: CLAUDE.md compliance (haiku, tool access)
@@ -133,12 +135,13 @@ council-plugin/
 
 | Workflow | Use Case | API Calls |
 |----------|----------|-----------|
-| Parallel | Default, broad feedback | 4 |
-| Review | Code review with scoring | 4 + scoring + escalation |
-| Review (focused) | Single-concern deep review | 4 + scoring |
-| Hierarchical | Quick validation, rate limits | 1-4 |
-| Adversarial | Surface trade-offs | 4 |
-| Consensus | High-stakes decisions | 4-12 |
+| Parallel | Default, broad feedback | 5 |
+| Review | Code review with scoring | 10 (5 external + 5 Claude) + scoring + escalation |
+| Review (focused) | Single-concern deep review | 10 (5 external + 5 Claude) + scoring |
+| Review (concern) | Deep dive on one concern | 10 + scoring (all focus on single lens) |
+| Hierarchical | Quick validation, rate limits | 1-5 |
+| Adversarial | Surface trade-offs | 5 |
+| Consensus | High-stakes decisions | 5-15 |
 
 ## Review Confidence Scoring
 

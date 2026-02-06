@@ -4,15 +4,15 @@
 
 | Command | Action | API Calls |
 |---------|--------|-----------|
-| `/council` | General council invocation | 4 parallel |
+| `/council` | General council invocation | 5 parallel |
 | `/council review` | Code review (broad + auto-escalation) | 4 + scoring + escalation |
 | `/council review security` | Focused security review | 4 + scoring |
 | `/council review architecture` | Focused architecture review | 4 + scoring |
 | `/council review bugs` | Focused bug detection | 4 + scoring |
 | `/council review quality` | Focused quality/CLAUDE.md review | 4 + scoring |
-| `/council plan` | Plan validation mode | 4 parallel |
+| `/council plan` | Plan validation mode | 5 parallel |
 | `/council consensus [topic]` | Multi-round consensus | 4-12 (multi-round) |
-| `/council adversarial` | Adversarial review | 4 parallel |
+| `/council adversarial` | Adversarial review | 5 parallel |
 | `/council quick` | Hierarchical (1→4) | 1-4 (escalates) |
 
 **Note**: Does NOT auto-trigger. Requires explicit invocation.
@@ -21,7 +21,7 @@
 
 ```
 /council review              → Auto-detect concerns, broad pass + escalation, both layers
-/council review security     → All 4 external focus on security + all 5 Claude subagents
+/council review security     → All 5 external focus on security + all 5 Claude subagents
 /council review bugs quality → Run bugs round, then quality round, merge results
 /council review --blind      → Claude subagents via CLI (no tool access), equal footing
 ```
@@ -29,16 +29,16 @@
 ### Review Architecture (Dual-Layer)
 
 ```
-Layer 1: External Consultants          Layer 2: Claude Subagents
-(model diversity, same prompt)         (concern depth, tool access)
-┌────────┬────────┬────────┬────────┐  ┌──────────┬──────────┬──────────┐
-│ Gemini │ Codex  │ Qwen   │ GLM    │  │ Security │ Bugs     │Compliance│
-│  CLI   │  CLI   │  CLI   │  CLI   │  │ (opus)   │ (opus)   │ (haiku)  │
-└────────┴────────┴────────┴────────┘  ├──────────┼──────────┤
-         ↓ consensus                   │ History  │ Quality  │
-                                       │ (haiku)  │ (haiku)  │
-         ALL run in parallel           └──────────┴──────────┘
-                    ↓                          ↓ depth
+Layer 1: External Consultants                    Layer 2: Claude Subagents
+(model diversity, same prompt)                   (concern depth, tool access)
+┌────────┬────────┬────────┬────────┬────────┐   ┌──────────┬──────────┬──────────┐
+│ Gemini │ Codex  │ Qwen   │ GLM    │ Kimi   │   │ Security │ Bugs     │Compliance│
+│  CLI   │  CLI   │  CLI   │  CLI   │  CLI   │   │ (opus)   │ (opus)   │ (haiku)  │
+└────────┴────────┴────────┴────────┴────────┘   ├──────────┼──────────┤
+         ↓ consensus                              │ History  │ Quality  │
+                                                  │ (haiku)  │ (haiku)  │
+         ALL run in parallel                      └──────────┴──────────┘
+                    ↓                                    ↓ depth
               ┌───────────┐
               │  Scorer   │ ← merges + scores all findings
               │ (sonnet)  │
@@ -57,21 +57,20 @@ done
 ## Expertise Weights
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    CONSULTANT EXPERTISE MATRIX                       │
-├─────────────┬─────────┬─────────┬─────────┬─────────────────────────┤
-│ Task        │ Gemini  │ Codex   │ Qwen    │ GLM-4.7                 │
-├─────────────┼─────────┼─────────┼─────────┼─────────────────────────┤
-│ Security    │ 0.90    │ 0.80    │ 0.70    │ 0.75                    │
-│ PR Review   │ 0.85    │ 0.90    │ 0.80    │ 0.75                    │
-│ Architecture│ 0.85    │ 0.70    │ 0.65    │ 0.80                    │
-│ Code Quality│ 0.70    │ 0.80    │ 0.90    │ 0.70                    │
-│ Performance │ 0.75    │ 0.85    │ 0.85    │ 0.70                    │
-│ Brainstorm  │ 0.65    │ 0.60    │ 0.90    │ 0.85                    │
-│ Algorithms  │ 0.70    │ 0.75    │ 0.85    │ 0.85                    │
-│ Debugging   │ 0.75    │ 0.90    │ 0.80    │ 0.75                    │
-│ Chinese Docs│ 0.40    │ 0.40    │ 0.70    │ 0.95                    │
-└─────────────┴─────────┴─────────┴─────────┴─────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                       CONSULTANT EXPERTISE MATRIX                            │
+├─────────────┬─────────┬─────────┬─────────┬─────────┬────────────────────────┤
+│ Task        │ Gemini  │ Codex   │ Qwen    │ GLM-4.7 │ Kimi K2.5              │
+├─────────────┼─────────┼─────────┼─────────┼─────────┼────────────────────────┤
+│ Security    │ 0.90    │ 0.80    │ 0.70    │ 0.75    │ 0.70                   │
+│ PR Review   │ 0.85    │ 0.90    │ 0.80    │ 0.75    │ 0.80                   │
+│ Architecture│ 0.85    │ 0.70    │ 0.65    │ 0.80    │ 0.75                   │
+│ Code Quality│ 0.70    │ 0.80    │ 0.90    │ 0.70    │ 0.80                   │
+│ Performance │ 0.75    │ 0.85    │ 0.85    │ 0.70    │ 0.80                   │
+│ Brainstorm  │ 0.65    │ 0.60    │ 0.90    │ 0.85    │ 0.80                   │
+│ Algorithms  │ 0.70    │ 0.75    │ 0.85    │ 0.85    │ 0.80                   │
+│ Debugging   │ 0.75    │ 0.90    │ 0.80    │ 0.75    │ 0.80                   │
+└─────────────┴─────────┴─────────┴─────────┴─────────┴────────────────────────┘
 ```
 
 ## Workflow Selection
@@ -97,8 +96,8 @@ done
 │  Need confidence? ───────────► Multi-round Consensus                │
 │        │                              Calls: 4-12 (rounds)          │
 │        │                                                             │
-│  Default ────────────────────► Parallel (all 4)                     │
-│                                       Calls: 4 (parallel)           │
+│  Default ────────────────────► Parallel (all 5)                     │
+│                                       Calls: 5 (parallel)           │
 │                                                                      │
 └──────────────────────────────────────────────────────────────────────┘
 ```
@@ -110,7 +109,7 @@ done
         │
         ▼
 ┌─────────────────┐     ┌──────────────────┐
-│ Concern given?  │──Y──► Focus all 4 on   │
+│ Concern given?  │──Y──► Focus all 5 on   │
 │ (security, etc) │     │ that concern      │
 └────────┬────────┘     └────────┬─────────┘
          │ N                     │
@@ -133,7 +132,7 @@ done
 ┌────────┐ ┌──────────┐         │
 │ Broad  │ │ Run each │         │
 │ pass   │ │ concern  │         │
-│ all 4  │ │ mode     │         │
+│ all 5  │ │ mode     │         │
 └───┬────┘ └────┬─────┘         │
     │           │               │
     ▼           │               │
@@ -162,11 +161,12 @@ done
 
 | Available | Action |
 |-----------|--------|
-| 4/4 | Full synthesis |
-| 3/4 | Proceed + warning |
-| 2/4 | Proceed + strong warning |
-| 1/4 | Abort → single consultant |
-| 0/4 | Abort with error |
+| 5/5 | Full synthesis |
+| 4/5 | Proceed + note |
+| 3/5 | Proceed + warning |
+| 2/5 | Proceed + strong warning |
+| 1/5 | Abort → single consultant |
+| 0/5 | Abort with error |
 
 ## Structured Response Schema
 
@@ -208,7 +208,7 @@ Score  Meaning
 
 **Threshold**: Only findings scoring >= 80 appear in the final report (configurable).
 
-**Consensus informs score**: 4/4 flagged → higher baseline. 1/4 flagged → more scrutiny. But consensus does NOT override scorer judgment.
+**Consensus informs score**: 5/5 flagged → higher baseline. 1/5 flagged → more scrutiny. But consensus does NOT override scorer judgment.
 
 ## Synthesis Formula
 
@@ -223,6 +223,7 @@ Security finding:
   Codex  (exp=0.8, conf=0.90): HIGH     → 0.8 × 0.90 = 0.720
   Qwen   (exp=0.7, conf=0.70): MEDIUM   → 0.7 × 0.70 = 0.490
   GLM    (exp=0.75, conf=0.80): HIGH    → 0.75 × 0.80 = 0.600
+  Kimi   (exp=0.7, conf=0.75): HIGH    → 0.7 × 0.75 = 0.525
 
 Weighted → CRITICAL (Gemini's expertise dominates)
 ```
@@ -233,7 +234,7 @@ Weighted → CRITICAL (Gemini's expertise dominates)
 ## Council Review Summary
 
 ### Pre-Flight Status
-- Gemini: ✓ | Codex: ✓ | Qwen: ✓ | GLM: ✗ (timeout)
+- Gemini: ✓ | Codex: ✓ | Qwen: ✓ | GLM: ✗ (timeout) | Kimi: ✓
 
 ### 🚨 Critical (Any consultant)
 - [Block-level issues]
@@ -245,8 +246,8 @@ Weighted → CRITICAL (Gemini's expertise dominates)
 - [Strong agreement findings]
 
 ### 🔀 Divergent
-| Issue | Gemini | Codex | Qwen | GLM | Weighted |
-|-------|--------|-------|------|-----|----------|
+| Issue | Gemini | Codex | Qwen | GLM | Kimi | Weighted |
+|-------|--------|-------|------|-----|------|----------|
 
 ### Confidence: High/Medium/Low
 ### Rate Limits: None / Retried: 1 / Skipped: GLM
@@ -258,7 +259,7 @@ Weighted → CRITICAL (Gemini's expertise dominates)
 ## Council Code Review
 
 ### Pre-Flight Status
-- Gemini: ✓ | Codex: ✓ | Qwen: ✓ | GLM: ✓
+- Gemini: ✓ | Codex: ✓ | Qwen: ✓ | GLM: ✓ | Kimi: ✓
 ### Concern Mode: security (user-selected)
 ### Escalation: None
 
@@ -300,6 +301,10 @@ qwen -s "@file test this"  # Sandbox mode
 # GLM
 opencode -m glm-4.7 "prompt"
 opencode -m glm-4.7 -f file "prompt"
+
+# Kimi
+opencode run -m opencode/kimi-k2.5-free "prompt"
+cat file | opencode run -m opencode/kimi-k2.5-free "prompt"
 ```
 
 ## Pre-Launch Checklist

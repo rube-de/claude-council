@@ -74,7 +74,7 @@ fi
    ```
 
 4. **Handle Partial Responses**
-   - 4/4: Full synthesis
+   - 5/5: Full synthesis
    - 3/4: Proceed with warning
    - 2/4: Proceed with strong warning
    - 1/4: Abort, fall back to single consultant
@@ -220,7 +220,7 @@ fi
    # etc. — no tool access, same constraints as external consultants
    ```
 
-   All 9 agents (4 external + 5 Claude) run simultaneously.
+   All 10 agents (5 external + 5 Claude) run simultaneously.
    Each MUST return findings with mandatory `location` field (`file:line`).
 
 8. **Auto-Escalation (Broad Pass Only)**
@@ -230,7 +230,7 @@ fi
    IF any finding has severity == "critical" or "high":
      → Identify the concern type (security, architecture, bug, quality)
      → Launch a focused concern-specific round for that type
-     → All 4 consultants re-review through that narrow lens
+     → All 5 consultants re-review through that narrow lens
    IF all findings are medium/low:
      → Skip escalation, proceed to scoring
    ```
@@ -409,6 +409,7 @@ fi
    **Advocates** (find reasons to APPROVE):
    - Gemini: Focus on architectural soundness
    - Qwen: Focus on code quality benefits
+   - Kimi: Focus on implementation correctness
 
    **Critics** (find reasons to REJECT):
    - Codex: Focus on bugs, security holes
@@ -497,7 +498,7 @@ Review these perspectives:
 ### Round 3: Final Call (if needed)
 
 **Abort Criteria - Skip Round 3 if:**
-- 3/4 or 4/4 agree after Round 2
+- 4/5 or 5/5 agree after Round 2
 - Disagreement is on preferences, not facts
 - More rounds won't produce new information
 
@@ -544,7 +545,7 @@ This is your FINAL recommendation. If you've changed your mind, explain why."
 
 ### How It Differs from Workflow B
 
-Workflow B (broad review) asks consultants to review for ALL concerns. Workflow F narrows the lens so ALL 4 consultants focus on ONE concern type. This produces deeper analysis and stronger consensus signals for that specific area.
+Workflow B (broad review) asks consultants to review for ALL concerns. Workflow F narrows the lens so ALL 5 consultants focus on ONE concern type. This produces deeper analysis and stronger consensus signals for that specific area.
 
 ### Concern Prompt Templates
 
@@ -634,7 +635,7 @@ Good: "Compare Redis vs Memcached for our use case."
 Disagreement often reveals important trade-offs. Don't just majority-vote it away.
 
 ### ❌ Skipping Synthesis
-Users want insights, not four reports. Always synthesize.
+Users want insights, not five reports. Always synthesize.
 
 ### ❌ Over-consulting
 80% of decisions need 1-2 consultants, not 4.
