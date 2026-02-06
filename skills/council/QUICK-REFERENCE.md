@@ -5,13 +5,25 @@
 | Command | Action | API Calls |
 |---------|--------|-----------|
 | `/council` | General council invocation | 4 parallel |
-| `/council review` | PR/code review mode | 4 parallel |
+| `/council review` | Code review (broad + auto-escalation) | 4 + scoring + escalation |
+| `/council review security` | Focused security review | 4 + scoring |
+| `/council review architecture` | Focused architecture review | 4 + scoring |
+| `/council review bugs` | Focused bug detection | 4 + scoring |
+| `/council review quality` | Focused quality/CLAUDE.md review | 4 + scoring |
 | `/council plan` | Plan validation mode | 4 parallel |
 | `/council consensus [topic]` | Multi-round consensus | 4-12 (multi-round) |
 | `/council adversarial` | Adversarial review | 4 parallel |
 | `/council quick` | Hierarchical (1→4) | 1-4 (escalates) |
 
 **Note**: Does NOT auto-trigger. Requires explicit invocation.
+
+### Review Mode Behavior
+
+```
+/council review              → Auto-detect concerns, user confirms, broad pass + escalation
+/council review security     → All 4 consultants focus on security only
+/council review bugs quality → Run bugs round, then quality round, merge results
+```
 
 ## Pre-Flight Check
 
@@ -45,26 +57,85 @@ done
 ## Workflow Selection
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Which Workflow?                              │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  Quick validation?  ──────────► Hierarchical (start with 1)     │
-│        │                              Calls: 1-4 (escalates)    │
-│        │                                                        │
-│  Rate limits?  ───────────────► Hierarchical or staggered       │
-│        │                              Calls: 1-4 (sequential)   │
-│        │                                                        │
-│  Need trade-offs? ────────────► Adversarial                     │
-│        │                              Calls: 4 (parallel)       │
-│        │                                                        │
-│  Need confidence? ────────────► Multi-round Consensus           │
-│        │                              Calls: 4-12 (rounds)      │
-│        │                                                        │
-│  Default ─────────────────────► Parallel (all 4)                │
-│                                       Calls: 4 (parallel)       │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                       Which Workflow?                                 │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Code review?  ──────────────► /council review                      │
+│        │                        + concern modes (security, bugs...)  │
+│        │                        + auto-escalation + scoring          │
+│        │                                                             │
+│  Quick validation?  ─────────► Hierarchical (start with 1)          │
+│        │                              Calls: 1-4 (escalates)        │
+│        │                                                             │
+│  Rate limits?  ──────────────► Hierarchical or staggered            │
+│        │                              Calls: 1-4 (sequential)       │
+│        │                                                             │
+│  Need trade-offs? ───────────► Adversarial                          │
+│        │                              Calls: 4 (parallel)           │
+│        │                                                             │
+│  Need confidence? ───────────► Multi-round Consensus                │
+│        │                              Calls: 4-12 (rounds)          │
+│        │                                                             │
+│  Default ────────────────────► Parallel (all 4)                     │
+│                                       Calls: 4 (parallel)           │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+## Review Workflow Flow
+
+```
+/council review [concern?]
+        │
+        ▼
+┌─────────────────┐     ┌──────────────────┐
+│ Concern given?  │──Y──► Focus all 4 on   │
+│ (security, etc) │     │ that concern      │
+└────────┬────────┘     └────────┬─────────┘
+         │ N                     │
+         ▼                       │
+┌─────────────────┐              │
+│ Auto-detect     │              │
+│ from diff       │              │
+└────────┬────────┘              │
+         ▼                       │
+┌─────────────────┐              │
+│ User confirms   │              │
+│ concern(s)      │              │
+└────────┬────────┘              │
+         │                       │
+    ┌────┴────┐                  │
+    │         │                  │
+  General   Specific             │
+    │         │                  │
+    ▼         ▼                  │
+┌────────┐ ┌──────────┐         │
+│ Broad  │ │ Run each │         │
+│ pass   │ │ concern  │         │
+│ all 4  │ │ mode     │         │
+└───┬────┘ └────┬─────┘         │
+    │           │               │
+    ▼           │               │
+┌────────┐      │               │
+│ Auto-  │      │               │
+│escalate│      │               │
+│if high │      │               │
+└───┬────┘      │               │
+    │           │               │
+    └─────┬─────┘───────────────┘
+          ▼
+  ┌───────────────┐
+  │ Sonnet scorer │
+  │ 0-100 each    │
+  │ filter >= 80  │
+  └───────┬───────┘
+          ▼
+  ┌───────────────┐
+  │ Weighted      │
+  │ synthesis     │
+  │ + report      │
+  └───────────────┘
 ```
 
 ## Partial Success Modes
@@ -98,6 +169,27 @@ done
 }
 ```
 
+**`location`**: MANDATORY for `/council review` findings. Format: `file:line`. Optional for plan/adversarial/consensus.
+
+## Confidence Scoring (Review Workflows)
+
+After consultants return findings, a Sonnet scoring agent evaluates each one:
+
+```
+Score  Meaning
+─────  ───────────────────────────────────────────────────────
+  0    False positive. Doesn't hold up to scrutiny.
+ 25    Might be real, but unverified. Could be false positive.
+ 50    Real but minor. Unlikely to occur in practice.
+ 75    Verified real. Will impact functionality. Important.
+100    Confirmed. Frequent in practice. Evidence conclusive.
+─────  ───────────────────────────────────────────────────────
+```
+
+**Threshold**: Only findings scoring >= 80 appear in the final report (configurable).
+
+**Consensus informs score**: 4/4 flagged → higher baseline. 1/4 flagged → more scrutiny. But consensus does NOT override scorer judgment.
+
 ## Synthesis Formula
 
 ```
@@ -115,7 +207,7 @@ Security finding:
 Weighted → CRITICAL (Gemini's expertise dominates)
 ```
 
-## Output Template
+## Output Template (General)
 
 ```markdown
 ## Council Review Summary
@@ -138,6 +230,33 @@ Weighted → CRITICAL (Gemini's expertise dominates)
 
 ### Confidence: High/Medium/Low
 ### Rate Limits: None / Retried: 1 / Skipped: GLM
+```
+
+## Output Template (Review Workflows)
+
+```markdown
+## Council Code Review
+
+### Pre-Flight Status
+- Gemini: ✓ | Codex: ✓ | Qwen: ✓ | GLM: ✓
+### Concern Mode: security (user-selected)
+### Escalation: None
+
+### 🚨 Block Merge (Critical, score >= 80)
+- SQL injection in user input handler at `src/api.ts:42` (score: 94, flagged by: Gemini, Codex, Qwen)
+
+### ⚠️ Should Fix (High, score >= 80, 2+ agree)
+- Missing auth check on admin endpoint at `src/routes/admin.ts:18` (score: 87, flagged by: Gemini, GLM)
+
+### 💡 Consider (Medium, score >= 80)
+- Broad exception catch at `src/services/user.ts:92` (score: 82, flagged by: Qwen)
+
+### ✅ Approved Aspects
+- Token validation logic is sound
+- Rate limiting correctly implemented
+
+### Filtered Out (score < 80): 2 findings
+### Rate Limits: None encountered
 ```
 
 ## CLI Commands
@@ -172,6 +291,9 @@ Before sending to external AIs:
 - [ ] Content wrapped in XML delimiters
 - [ ] Timeout set (120s default)
 - [ ] Rate limit strategy selected (parallel vs staggered)
+- [ ] False positive taxonomy included in prompt (review workflows)
+- [ ] Git history context gathered (review workflows)
+- [ ] Concern mode determined (review workflows)
 
 ## Anti-Pattern Quick Check
 

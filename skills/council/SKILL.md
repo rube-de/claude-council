@@ -101,13 +101,15 @@ Each consultant MUST return structured output:
       "type": "security|performance|quality|architecture|bug",
       "severity": "critical|high|medium|low",
       "description": "...",
-      "location": "file:line (if applicable)",
+      "location": "file:line",
       "recommendation": "..."
     }
   ],
   "summary": "One-paragraph summary"
 }
 ```
+
+**Location field**: MANDATORY for code review findings (`/council review`). Must be `file:line` format (e.g. `src/api.ts:42`). Optional for non-code reviews (`/council plan`, `/council adversarial`, `/council consensus`).
 
 ## Security Hardening
 
@@ -139,6 +141,118 @@ fi
 ```
 
 If secrets detected, abort and warn user.
+
+## False Positive Taxonomy (Review Workflows)
+
+When running any `/council review` workflow, include this in every consultant prompt to filter noise at the source:
+
+```
+Do NOT flag the following as issues:
+- Pre-existing issues not introduced in the current changes
+- Problems that a linter, typechecker, or compiler would catch (imports, types, formatting)
+- Pedantic nitpicks that a senior engineer would not call out
+- General code quality issues (lack of test coverage, poor docs) UNLESS explicitly required in CLAUDE.md
+- Issues on lines that were NOT modified in the changes under review
+- Intentional functionality changes that are clearly related to the broader change
+- Code with explicit lint-ignore or suppress comments
+```
+
+## Concern-Specific Review Modes
+
+`/council review` supports focused concern modes. All 4 consultants review through the **same lens** for consensus on that concern.
+
+### Available Concern Modes
+
+| Command | Lens | All consultants focus on |
+|---------|------|-------------------------|
+| `/council review security` | Security | Auth flaws, injection, secrets, access control, crypto misuse |
+| `/council review architecture` | Architecture | Coupling, cohesion, SOLID, dependency direction, extensibility |
+| `/council review bugs` | Bugs | Logic errors, race conditions, null handling, edge cases, off-by-one |
+| `/council review quality` | Code Quality | Readability, naming, complexity, duplication, CLAUDE.md compliance |
+
+### Auto-Detection + User Confirmation
+
+When `/council review` is invoked **without** a concern mode:
+
+```
+1. Analyze the diff to detect which concerns are relevant:
+   - Auth/crypto/input-validation files changed → suggest "security"
+   - New modules/interfaces/dependency changes → suggest "architecture"
+   - Logic-heavy changes, conditionals, loops → suggest "bugs"
+   - Large refactors, naming changes, new patterns → suggest "quality"
+2. Present suggested concerns to user for confirmation/override
+3. User picks which concern modes to run (can select multiple)
+4. If user selects none or says "general" → run broad pass (see below)
+```
+
+### Broad Pass + Auto-Escalation (Default)
+
+When no concern mode is selected, `/council review` runs a **broad pass**:
+
+```
+Phase 1: Broad Review
+  - All 4 consultants review for ALL concerns in a single pass
+  - Each returns findings tagged by type (security, architecture, bug, quality)
+
+Phase 2: Auto-Escalation
+  - If any finding has severity == "critical" or "high":
+    → Automatically launch a focused concern-specific round for that type
+    → All 4 consultants re-review through that narrow lens only
+  - If all findings are medium/low:
+    → No escalation, proceed to scoring
+
+Phase 3: Confidence Scoring
+  - Sonnet scoring agent evaluates all findings (see below)
+```
+
+## Confidence Scoring Agent
+
+After consultants return findings (in any `/council review` workflow), a **Sonnet scoring agent** evaluates every finding uniformly.
+
+### Scoring Process
+
+```
+1. Collect ALL findings from ALL consultants
+2. Deduplicate findings that refer to the same issue (merge consultant attributions)
+3. Launch a Sonnet agent (model: sonnet) with the full code context + all findings
+4. The scorer evaluates each finding on a 0-100 confidence scale:
+
+   0:   False positive. Does not stand up to scrutiny, or is pre-existing.
+   25:  Might be real, but could also be a false positive. Not verified.
+   50:  Real issue, but minor or unlikely to occur in practice.
+   75:  Verified real issue. Will impact functionality. Important.
+   100: Confirmed real. Will happen frequently. Evidence is conclusive.
+
+5. Consensus count from consultants INFORMS the score:
+   - 4/4 flagged → scorer starts from a higher baseline
+   - 1/4 flagged → scorer applies more scrutiny
+   - But consensus does NOT override the scorer's independent judgment
+
+6. Filter: Only findings scoring >= 80 appear in the final report
+   (configurable threshold, default 80)
+```
+
+### Scorer Prompt Template
+
+```
+You are a senior code reviewer scoring findings for confidence.
+
+For each finding below, assign a score 0-100 based on:
+- Is this a real issue or false positive?
+- How likely is it to cause problems in practice?
+- How strong is the evidence?
+- How many consultants independently flagged it? (consensus signal, not conclusive)
+
+Code context:
+<code_context>
+[diff or file content]
+</code_context>
+
+Findings to score:
+[list of deduplicated findings with consultant attributions]
+
+Return JSON: [{finding_id, score, reasoning}]
+```
 
 ## Workflow Patterns
 
