@@ -2,7 +2,12 @@
 name: claude-history
 description: "Internal Claude subagent for historical context analysis in code review. Uses git blame, commit history, and previous change patterns to identify regressions and recurring issues. Launched automatically by council review workflows — not invoked directly by users."
 tools: Read, Grep, Glob, Bash
+disallowedTools: Write, Edit, NotebookEdit
 model: haiku
+maxTurns: 15
+permissionMode: bypassPermissions
+skills:
+  - council-reference
 color: yellow
 ---
 

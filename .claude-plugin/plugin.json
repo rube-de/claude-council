@@ -16,9 +16,6 @@
     "glm",
     "kimi"
   ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/rube-de/claude-council"
-  },
+  "repository": "https://github.com/rube-de/claude-council",
   "license": "MIT"
 }

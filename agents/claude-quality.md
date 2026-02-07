@@ -2,7 +2,12 @@
 name: claude-quality
 description: "Internal Claude subagent for code quality analysis in code review. Checks readability, complexity, duplication, and pattern consistency by comparing against the broader codebase. Launched automatically by council review workflows — not invoked directly by users."
 tools: Read, Grep, Glob, Bash
+disallowedTools: Write, Edit, NotebookEdit
 model: haiku
+maxTurns: 15
+permissionMode: bypassPermissions
+skills:
+  - council-reference
 color: magenta
 ---
 

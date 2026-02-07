@@ -2,7 +2,12 @@
 name: claude-compliance
 description: "Internal Claude subagent for CLAUDE.md and code comment compliance checking. Reads the project's CLAUDE.md files directly and compares changes against stated rules. Launched automatically by council review workflows — not invoked directly by users."
 tools: Read, Grep, Glob, Bash
+disallowedTools: Write, Edit, NotebookEdit
 model: haiku
+maxTurns: 15
+permissionMode: bypassPermissions
+skills:
+  - council-reference
 color: cyan
 ---
 

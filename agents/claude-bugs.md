@@ -2,7 +2,12 @@
 name: claude-bugs
 description: "Internal Claude subagent for bug detection in code review. Has native codebase access to follow call chains, check type definitions, verify edge cases, and trace error propagation. Launched automatically by council review workflows — not invoked directly by users."
 tools: Read, Grep, Glob, Bash
+disallowedTools: Write, Edit, NotebookEdit
 model: opus
+maxTurns: 15
+permissionMode: bypassPermissions
+skills:
+  - council-reference
 color: red
 ---
 

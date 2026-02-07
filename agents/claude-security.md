@@ -2,7 +2,12 @@
 name: claude-security
 description: "Internal Claude subagent for security-focused code review. Has native codebase access (Read, Grep, Glob, Bash) to follow imports, check auth flows, trace input paths, and verify sanitization. Launched automatically by council review workflows — not invoked directly by users."
 tools: Read, Grep, Glob, Bash
+disallowedTools: Write, Edit, NotebookEdit
 model: opus
+maxTurns: 15
+permissionMode: bypassPermissions
+skills:
+  - council-reference
 color: red
 ---
 

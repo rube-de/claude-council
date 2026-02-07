@@ -1,8 +1,11 @@
 ---
 name: council
 description: Consult external AI council (Gemini, Codex, Qwen, GLM-4.7) for thorough reviews and consensus-driven decisions. Use ONLY when explicitly invoked with "/council" or when user says "consult the council", "invoke council", or "council review". Do NOT auto-trigger on generic phrases like "thorough review".
+argument-hint: "[review|plan|adversarial|consensus|quick] [security|architecture|bugs|quality] [--blind]"
 allowed-tools: Task, Read, Grep, Glob, Bash, TodoWrite
 user-invocable: true
+context: fork
+agent: general-purpose
 ---
 
 # External AI Council
